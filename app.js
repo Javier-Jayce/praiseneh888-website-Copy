@@ -10,6 +10,7 @@ const FACEBOOK =
 
 const grid = document.querySelector("#catalogueGrid");
 const search = document.querySelector("#searchInput");
+const masterFilter = document.querySelector("#masterFilter");
 const cat = document.querySelector("#categoryFilter");
 const status = document.querySelector("#statusFilter");
 const count = document.querySelector("#resultCount");
@@ -159,7 +160,8 @@ document.querySelectorAll(".speciality-card .text-link")
 const reset = document.createElement("button");
 reset.type = "button";
 reset.className = "text-link";
-reset.textContent = "Show all pieces";
+reset.textContent = "Clear filters · Show all";
+reset.className = "clear-filters";
 reset.hidden = true;
 reset.style.cssText =
   "cursor:pointer;background:transparent;border:0;" +
@@ -169,6 +171,7 @@ count.insertAdjacentElement("afterend", reset);
 
 reset.addEventListener("click", () => {
   activeSpeciality = "";
+  masterFilter.value = "";
   search.value = "";
   cat.value = "";
   status.value = "";
@@ -187,6 +190,7 @@ function render() {
     ].join(" "));
 
     return (!query || text.includes(query)) &&
+      (!masterFilter.value || normalize(masterName(item)) === masterFilter.value) &&
       (!cat.value || item.category === cat.value) &&
       (!status.value || item.status === status.value) &&
       matchesSpeciality(item);
@@ -199,7 +203,7 @@ function render() {
       : "");
 
   reset.hidden = !(
-    activeSpeciality || search.value || cat.value || status.value
+    activeSpeciality || masterFilter.value || search.value || cat.value || status.value
   );
 
   empty.textContent =
@@ -241,7 +245,7 @@ function render() {
   }).join("");
 }
 
-[search, cat, status].forEach(element => {
+[search, masterFilter, cat, status].forEach(element => {
   element.addEventListener("input", render);
 });
 
@@ -294,6 +298,10 @@ function openDetails(card) {
   modal.setAttribute("aria-labelledby", "detailTitle");
   document.body.style.overflow = "hidden";
   modal.querySelector(".modal-close").focus();
+  const detailUrl = new URL(window.location.href);
+  detailUrl.searchParams.set("item", item.id);
+  history.replaceState(null, "", detailUrl);
+  addShareButtons();
 }
 
 function closeDetails() {
@@ -301,6 +309,9 @@ function closeDetails() {
   modal.setAttribute("aria-hidden", "true");
   document.body.style.overflow = "";
   previousFocus?.focus();
+  const detailUrl = new URL(window.location.href);
+  detailUrl.searchParams.delete("item");
+  history.replaceState(null, "", detailUrl);
 }
 
 grid.addEventListener("click", event => {
@@ -367,6 +378,9 @@ async function loadItems() {
         `<option value="${esc(category)}">${esc(category)}</option>`
       ).join("");
 
+    const masters = new Map();
+    items.forEach(item => { const name = masterName(item).trim(); if (name) masters.set(normalize(name), name); });
+    masterFilter.innerHTML = '<option value="">All masters</option>' + [...masters].sort((a,b)=>a[1].localeCompare(b[1])).map(([value,label])=>`<option value="${esc(value)}">${esc(label)}</option>`).join("");
     render();
   } catch (error) {
     grid.innerHTML =
@@ -455,35 +469,6 @@ function addShareButtons() {
   content.querySelector(".modal-detail > div:last-child")
     ?.append(container);
 }
-
-// Keep the address linked to the currently opened piece.
-const originalOpenDetails = openDetails;
-openDetails = function (card) {
-  originalOpenDetails(card);
-
-  const url = new URL(window.location.href);
-  url.searchParams.set("item", card.dataset.id);
-  history.replaceState(null, "", url);
-  addShareButtons();
-};
-
-const originalCloseDetails = closeDetails;
-closeDetails = function () {
-  originalCloseDetails();
-
-  const url = new URL(window.location.href);
-  url.searchParams.delete("item");
-  history.replaceState(null, "", url);
-};
-
-// Existing close buttons were connected before this addition.
-document.querySelectorAll("[data-close]").forEach(element => {
-  element.addEventListener("click", () => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("item");
-    history.replaceState(null, "", url);
-  });
-});
 
 // Open a shared listing after the catalogue has loaded.
 const sharedItemId =

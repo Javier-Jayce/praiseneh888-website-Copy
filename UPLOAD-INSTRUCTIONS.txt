@@ -1,0 +1,31 @@
+PRAISENEH888 EMERALD UPDATE
+
+1. Extract this ZIP on your computer.
+2. Open your existing GitHub repository (the one connected to praiseneh888.vercel.app).
+3. Choose Add file > Upload files.
+4. Drag index.html, styles.css, app.js and the entire assets folder into GitHub.
+   The artwork must appear at assets/khun-paen-hero.webp.
+5. Commit changes. Wait for the newest Vercel production deployment to say Ready.
+6. Open your site and press Ctrl + Shift + R.
+
+Keep existing supabase.js, admin.html, admin.js and database.sql.
+No database migration or new account is required.
+
+Check:
+- Header and hero are emerald green and gold.
+- The illustration loads.
+- Master dropdown starts at All masters.
+- Clear filters restores the complete catalogue.
+- A listing opens and Share / Copy link appears.
+- A copied link opens the same listing in a new tab.
+- Admin login and edits continue to work.
+
+Master dropdown uses master or ajarn field saved on each listing.
+Only published/publicly accessible listings can be opened by customers.
+Artwork is AI-generated decorative illustration, not an actual item for sale.
+The supplied third-party reference photographs are NOT included.
+
+Validation performed: JavaScript syntax; simulated DOM checks for master
+filtering, clearing filters, listing URL and close cleanup; local asset references.
+Live Supabase, Vercel deployment, native phone share dialog and full browser
+layout have not been verified from this workspace.

@@ -1,22 +1,30 @@
+
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#123d33">
+
   <title>Praiseneh888 | Old-School Thai Amulets</title>
-  <meta name="description" content="Explore old-school Thai amulets and Maha Seneh collectibles at Praiseneh888. Featuring AJ Meng, AC Perm Prai Dam, AJ Put and more.">
+
+  <meta name="description" content="Explore old-school Thai amulets, Maha Seneh pieces and traditional collectibles at Praiseneh888. Featuring AJ Meng, AC Perm Prai Dam, AJ Put and more.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=emerald1">
+
+  <link rel="stylesheet" href="/styles.css?v=emerald2">
 </head>
+
 <body>
 
 <header class="site-header">
+
   <a class="brand" href="/" aria-label="Praiseneh888 home">
     <span class="brand-symbol">๙</span>
+
     <span class="brand-name">
       Praiseneh888
       <small>OLD-SCHOOL THAI AMULETS</small>
@@ -26,6 +34,7 @@
   <nav id="mainNav">
     <a href="#catalogue">The collection</a>
     <a href="#about">Our story</a>
+
     <a class="nav-cta"
        href="https://www.facebook.com/profile.php?id=100081192944434"
        target="_blank"
@@ -37,13 +46,24 @@
   <button class="menu-toggle"
           id="menuToggle"
           aria-label="Open menu"
-          aria-controls="mainNav">☰</button>
+          aria-controls="mainNav"
+          aria-expanded="false">
+    ☰
+  </button>
+
 </header>
 
 <main>
+
+  <!-- HERO SECTION -->
+
   <section class="hero">
+
     <div class="hero-copy">
-      <p class="eyebrow">PRAISENEH888 · THE COLLECTOR’S GALLERY</p>
+
+      <p class="eyebrow">
+        PRAISENEH888 · THE COLLECTOR'S GALLERY
+      </p>
 
       <h1>
         Old-school soul.<br>
@@ -61,99 +81,159 @@
       </a>
 
       <p class="hero-masters">
-        AJ MENG &nbsp; / &nbsp; AC PERM PRAI DAM &nbsp; / &nbsp; AJ PUT & MORE
+        AJ MENG &nbsp; / &nbsp;
+        AC PERM PRAI DAM &nbsp; / &nbsp;
+        AJ PUT & MORE
       </p>
+
     </div>
 
     <figure class="hero-figure">
+
       <img
         src="/khun-paen-hero.webp"
-        alt="Original AI illustration inspired by Khun Paen folklore, in emerald and antique gold">
-      <figcaption>KHUN PAEN · ORIGINAL AI ARTWORK</figcaption>
+        alt="Original AI artwork inspired by traditional Khun Paen imagery, in emerald green and antique gold"
+        loading="eager"
+        fetchpriority="high">
+
+      <figcaption>
+        KHUN PAEN · ORIGINAL AI ARTWORK
+      </figcaption>
+
     </figure>
 
-    <div class="hero-index">TRADITION · WICHA · COLLECTING</div>
+    <div class="hero-index">
+      TRADITION · WICHA · COLLECTING
+    </div>
+
   </section>
 
+  <!-- COLLECTION TICKER -->
+
   <div class="ticker">
+
     <span>OLD-SCHOOL COLLECTIBLES</span>
     <i></i>
+
     <span>MAHA SENEH</span>
     <i></i>
+
     <span>STORIES WORTH SHARING</span>
+
   </div>
 
+  <!-- CATALOGUE -->
+
   <section class="catalogue section" id="catalogue">
+
     <div class="section-heading">
+
       <div>
-        <p class="eyebrow">EXPLORE PRAISENEH888 — 01</p>
+        <p class="eyebrow">
+          EXPLORE PRAISENEH888 — 01
+        </p>
+
         <h2>Find your next piece.</h2>
       </div>
 
       <p class="section-intro">
-        Browse all masters, explore a category, or search for something
-        specific. For details and availability, speak with us on Facebook.
+        Browse our selection of old-school Thai amulets and
+        traditional collectibles. Search by master, name or story.
+        For further details and availability, speak with us on Facebook.
       </p>
+
     </div>
 
+    <!-- FILTERS -->
+
     <div class="filters">
+
       <input
         id="searchInput"
         type="search"
         placeholder="Search name, master or story…"
         aria-label="Search catalogue">
 
-      <select id="masterFilter" aria-label="Filter by master">
-        <option value="">All masters</option>
-      </select>
+      <select
+        id="categoryFilter"
+        aria-label="Filter by category">
 
-      <select id="categoryFilter" aria-label="Filter by category">
         <option value="">All categories</option>
+
       </select>
 
-      <select id="statusFilter" aria-label="Filter by availability">
+      <select
+        id="statusFilter"
+        aria-label="Filter by availability">
+
         <option value="">All pieces</option>
         <option value="available">Available</option>
         <option value="reserved">Reserved</option>
         <option value="sold">Past collection</option>
+
       </select>
+
     </div>
 
     <div class="collection-meta">
-      <span id="resultCount" aria-live="polite">Loading collection…</span>
-      <span class="collection-hint">TAP A PIECE TO EXPLORE & SHARE ↗</span>
+
+      <span id="resultCount" aria-live="polite">
+        Loading collection…
+      </span>
+
+      <span class="collection-hint">
+        TAP A PIECE TO EXPLORE & SHARE ↗
+      </span>
+
     </div>
 
     <div id="catalogueGrid" class="catalogue-grid">
-      <div class="loading">Preparing the collection…</div>
+
+      <div class="loading">
+        Preparing the collection…
+      </div>
+
     </div>
 
     <p id="emptyState" class="empty-state" hidden>
       No pieces match your filters.
     </p>
+
   </section>
 
+  <!-- ABOUT -->
+
   <section class="about section" id="about">
-    <div class="about-number">02 / OUR STORY</div>
+
+    <div class="about-number">
+      02 / OUR STORY
+    </div>
 
     <div class="about-content">
-      <p class="eyebrow">FOR THE LOVE OF COLLECTING</p>
+
+      <p class="eyebrow">
+        FOR THE LOVE OF COLLECTING
+      </p>
+
       <h2>
         Tradition, character<br>
         <em>and a personal connection.</em>
       </h2>
+
     </div>
 
     <div class="about-text">
+
       <p>
-        Praiseneh888 specialises in old-school Thai amulets and Maha Seneh
-        collectibles. Our interests include AJ Meng, AC Perm Prai Dam,
-        AJ Put and many other masters.
+        Praiseneh888 specialises in old-school Thai amulets,
+        Maha Seneh pieces and traditional collectibles.
+        Our interests include AJ Meng, AC Perm Prai Dam,
+        AJ Put and many other respected masters.
       </p>
 
       <p>
-        We share the details and stories available for each piece, with
-        a collector’s appreciation for the traditions behind them.
+        We share the details and stories available for each piece,
+        with a collector's appreciation for the traditions behind them.
         Whether you have collected for years or are just starting,
         you are welcome here.
       </p>
@@ -162,13 +242,22 @@
          href="https://www.facebook.com/profile.php?id=100081192944434"
          target="_blank"
          rel="noopener noreferrer">
+
         Speak with us on Facebook ↗
+
       </a>
+
     </div>
+
   </section>
 
+  <!-- CONTACT -->
+
   <section class="contact-band">
-    <p class="eyebrow">LET’S TALK AMULETS</p>
+
+    <p class="eyebrow">
+      LET'S TALK AMULETS
+    </p>
 
     <h2>
       Something caught<br>
@@ -179,32 +268,60 @@
        href="https://www.facebook.com/profile.php?id=100081192944434"
        target="_blank"
        rel="noopener noreferrer">
+
       Enquire on Facebook ↗
+
     </a>
 
-    <p class="contact-note">Facebook login may be required.</p>
+    <p class="contact-note">
+      Facebook login may be required.
+    </p>
+
   </section>
+
 </main>
 
+<!-- FOOTER -->
+
 <footer>
-  <a class="footer-brand" href="/">Praiseneh888</a>
+
+  <a class="footer-brand" href="/">
+    Praiseneh888
+  </a>
 
   <span>
-    © <span id="year"></span> Praiseneh888 · Banner is original AI artwork.
+    © <span id="year"></span>
+    Praiseneh888 · All rights reserved.
   </span>
 
-  <a href="/admin.html">Admin</a>
+  <a href="/admin.html">
+    Admin
+  </a>
+
 </footer>
 
+<!-- AMULET DETAIL MODAL -->
+
 <div class="modal" id="detailModal" aria-hidden="true">
+
   <div class="modal-backdrop" data-close></div>
 
   <div class="modal-panel">
-    <button class="modal-close" data-close aria-label="Close">×</button>
+
+    <button
+      class="modal-close"
+      data-close
+      aria-label="Close">
+      ×
+    </button>
+
     <div id="modalContent"></div>
+
   </div>
+
 </div>
 
-<script type="module" src="/app.js?v=emerald1"></script>
+<script type="module" src="/app.js?v=emerald2"></script>
+
 </body>
 </html>

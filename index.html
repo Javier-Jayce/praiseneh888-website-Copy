@@ -10,12 +10,14 @@
 
   <meta name="description" content="Explore old-school Thai amulets, Maha Seneh pieces and traditional collectibles at Praiseneh888. Featuring AJ Meng, AC Perm Prai Dam, AJ Put and more.">
 
+  <meta name="robots" content="index, follow">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="/styles.css?v=emerald3">
+  <link rel="stylesheet" href="/styles.css?v=emerald4">
 </head>
 
 <body>
@@ -88,7 +90,7 @@
 
     </div>
 
-    <!-- KHUN PAEN HERO ARTWORK -->
+    <!-- HERO ARTWORK -->
 
     <figure class="hero-figure">
 
@@ -155,6 +157,16 @@
         type="search"
         placeholder="Search name, master or story…"
         aria-label="Search catalogue">
+
+      <!-- FIX: MASTER FILTER ADDED -->
+
+      <select
+        id="masterFilter"
+        aria-label="Filter by master">
+
+        <option value="">All masters</option>
+
+      </select>
 
       <select
         id="categoryFilter"
@@ -327,7 +339,7 @@
 
 <!-- WEBSITE JAVASCRIPT -->
 
-<script type="module" src="/app.js?v=emerald3"></script>
+<script type="module" src="/app.js?v=emerald4"></script>
 
 </body>
 </html>

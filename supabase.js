@@ -1,5 +1,7 @@
-// Paste your Supabase Project URL and anon/public key below.
-// These are public client-side settings. NEVER put your service_role key here.
-export const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
-export const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
-export const supabaseConfigured = !SUPABASE_URL.startsWith("YOUR_") && !SUPABASE_ANON_KEY.startsWith("YOUR_");
+// Supabase connection settings
+export const SUPABASE_URL = "https://fmhojxapicvjrbpzusxl.supabase.co";
+export const SUPABASE_ANON_KEY = "YOUR_PUBLISHABLE_KEY";
+
+export const supabaseConfigured =
+  !SUPABASE_URL.startsWith("YOUR_") &&
+  !SUPABASE_ANON_KEY.startsWith("YOUR_");

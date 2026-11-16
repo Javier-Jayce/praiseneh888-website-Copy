@@ -385,3 +385,125 @@ if (supabaseConfigured) {
     '<div class="loading">Catalogue setup is not connected yet. ' +
     'Please check back soon.</div>';
 }
+// Share individual amulet listings.
+function listingUrl(id) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("item", id);
+  url.hash = "";
+  return url.href;
+}
+
+async function copyListingLink(url, button) {
+  try {
+    await navigator.clipboard.writeText(url);
+    button.textContent = "Link copied ✓";
+  } catch {
+    window.prompt("Copy this listing link:", url);
+  }
+}
+
+function addShareButtons() {
+  if (!modal.classList.contains("open")) return;
+  if (content.querySelector("#listingShareTools")) return;
+
+  const id = new URL(window.location.href).searchParams.get("item");
+  const item = items.find(value => String(value.id) === id);
+  if (!item) return;
+
+  const container = document.createElement("div");
+  container.id = "listingShareTools";
+  container.style.cssText =
+    "display:flex;flex-wrap:wrap;gap:12px;margin-top:18px;";
+
+  const shareButton = document.createElement("button");
+  shareButton.type = "button";
+  shareButton.className = "primary-button";
+  shareButton.textContent = "Share this piece ↗";
+  shareButton.style.cursor = "pointer";
+
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "primary-button";
+  copyButton.textContent = "Copy link";
+  copyButton.style.cursor = "pointer";
+
+  const url = listingUrl(item.id);
+
+  shareButton.addEventListener("click", async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${item.name} | Praiseneh888`,
+          text: `View ${item.name} at Praiseneh888`,
+          url
+        });
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          await copyListingLink(url, shareButton);
+        }
+      }
+    } else {
+      await copyListingLink(url, shareButton);
+    }
+  });
+
+  copyButton.addEventListener("click", () => {
+    copyListingLink(url, copyButton);
+  });
+
+  container.append(shareButton, copyButton);
+  content.querySelector(".modal-detail > div:last-child")
+    ?.append(container);
+}
+
+// Keep the address linked to the currently opened piece.
+const originalOpenDetails = openDetails;
+openDetails = function (card) {
+  originalOpenDetails(card);
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("item", card.dataset.id);
+  history.replaceState(null, "", url);
+  addShareButtons();
+};
+
+const originalCloseDetails = closeDetails;
+closeDetails = function () {
+  originalCloseDetails();
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete("item");
+  history.replaceState(null, "", url);
+};
+
+// Existing close buttons were connected before this addition.
+document.querySelectorAll("[data-close]").forEach(element => {
+  element.addEventListener("click", () => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("item");
+    history.replaceState(null, "", url);
+  });
+});
+
+// Open a shared listing after the catalogue has loaded.
+const sharedItemId =
+  new URL(window.location.href).searchParams.get("item");
+
+if (sharedItemId) {
+  function openSharedItem() {
+    const card = [...grid.querySelectorAll(".amulet-card")]
+      .find(element => element.dataset.id === sharedItemId);
+
+    if (!card) return false;
+    openDetails(card);
+    return true;
+  }
+
+  if (!openSharedItem()) {
+    const sharedItemObserver = new MutationObserver(() => {
+      if (openSharedItem()) sharedItemObserver.disconnect();
+    });
+
+    sharedItemObserver.observe(grid, { childList: true });
+  }
+}

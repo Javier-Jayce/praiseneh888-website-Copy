@@ -23,6 +23,64 @@ const menu = document.querySelector("#menuToggle");
 let items = [];
 let activeSpeciality = "";
 let previousFocus = null;
+const PAGE_SIZE = 12;
+let currentPage = 1;
+
+// Public catalogue controls and compact mobile cards.
+const catalogueStyles = document.createElement("style");
+catalogueStyles.textContent = `
+  .catalogue-pagination{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:9px;margin:32px 0 0}
+  .catalogue-pagination button{border:1px solid #c7a96b;background:#fcfaf4;color:#164737;padding:10px 13px;min-height:42px;font:600 12px "DM Sans",sans-serif;cursor:pointer}
+  .catalogue-pagination button[aria-current="page"]{background:#164737;color:#fff}
+  .catalogue-pagination button:disabled{opacity:.4;cursor:not-allowed}
+  .catalogue-pagination .page-summary{font-size:12px;color:#68776d;margin:0 6px}
+  @media(max-width:600px){
+    #catalogueGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    #catalogueGrid .card-image{height:auto;aspect-ratio:1/1.15}
+    #catalogueGrid .card-image img{padding:5px}
+    #catalogueGrid .card-body{padding:11px 9px}
+    #catalogueGrid .card-body h3{font-size:15px;line-height:1.35;margin:6px 0}
+    #catalogueGrid .card-kicker{font-size:8px;line-height:1.35}
+    #catalogueGrid .card-body p{font-size:10px;line-height:1.5;margin-bottom:9px}
+    #catalogueGrid .card-bottom{font-size:10px;gap:5px;align-items:flex-start;flex-direction:column;padding-top:8px}
+    #catalogueGrid .status{font-size:8px;padding:3px 5px}
+    .catalogue-pagination{gap:5px}
+    .catalogue-pagination button{padding:8px 10px}
+  }
+`;
+document.head.append(catalogueStyles);
+
+const pagination = document.createElement("nav");
+pagination.className = "catalogue-pagination";
+pagination.setAttribute("aria-label", "Catalogue pages");
+grid.insertAdjacentElement("afterend", pagination);
+
+function renderPagination(total) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  if (pages <= 1) { pagination.innerHTML = ""; return; }
+  const visible = new Set([1, pages, currentPage-1, currentPage, currentPage+1]);
+  const pageButtons = [...visible].filter(n => n>=1 && n<=pages).sort((a,b)=>a-b);
+  let middle = "";
+  let prior = 0;
+  for (const page of pageButtons) {
+    if (page-prior>1) middle += '<span aria-hidden="true">…</span>';
+    middle += `<button type="button" data-page="${page}" ${page===currentPage?'aria-current="page"':''} aria-label="Page ${page}">${page}</button>`;
+    prior = page;
+  }
+  pagination.innerHTML = `
+    <button type="button" data-page="${currentPage-1}" ${currentPage===1?'disabled':''}>← Previous</button>
+    ${middle}
+    <button type="button" data-page="${currentPage+1}" ${currentPage===pages?'disabled':''}>Next →</button>
+    <span class="page-summary">Page ${currentPage} of ${pages}</span>
+  `;
+}
+pagination.addEventListener("click", event => {
+  const button = event.target.closest("button[data-page]");
+  if (!button || button.disabled) return;
+  currentPage = Number(button.dataset.page);
+  render();
+  document.querySelector("#catalogue").scrollIntoView({behavior:"smooth",block:"start"});
+});
 
 document.querySelector("#year").textContent =
   new Date().getFullYear();
@@ -152,6 +210,7 @@ document.querySelectorAll(".speciality-card .text-link")
       search.value = "";
       cat.value = "";
       status.value = "";
+      currentPage = 1;
       render();
     });
   });
@@ -175,6 +234,7 @@ reset.addEventListener("click", () => {
   search.value = "";
   cat.value = "";
   status.value = "";
+  currentPage = 1;
   render();
 });
 
@@ -196,6 +256,11 @@ function render() {
       matchesSpeciality(item);
   });
 
+  const pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  currentPage = Math.min(Math.max(1, currentPage), pages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const visible = list.slice(start, start + PAGE_SIZE);
+
   count.textContent =
     `${list.length} ${list.length === 1 ? "piece" : "pieces"}` +
     (activeSpeciality
@@ -211,7 +276,7 @@ function render() {
 
   empty.hidden = list.length > 0;
 
-  grid.innerHTML = list.map(item => {
+  grid.innerHTML = visible.map(item => {
     const images = imageUrls(item);
 
     return `
@@ -243,10 +308,11 @@ function render() {
         </div>
       </article>`;
   }).join("");
+  renderPagination(list.length);
 }
 
 [search, masterFilter, cat, status].forEach(element => {
-  element.addEventListener("input", render);
+  element.addEventListener("input", () => { currentPage = 1; render(); });
 });
 
 function openDetails(card) {
@@ -368,6 +434,7 @@ async function loadItems() {
     if (error) throw error;
 
     items = data || [];
+    const sharedId = new URL(window.location.href).searchParams.get("item");
 
     const categories = [...new Set(
       items.map(item => item.category).filter(Boolean)
@@ -382,6 +449,9 @@ async function loadItems() {
     items.forEach(item => { const name = masterName(item).trim(); if (name) masters.set(normalize(name), name); });
     masterFilter.innerHTML = '<option value="">All masters</option>' + [...masters].sort((a,b)=>a[1].localeCompare(b[1])).map(([value,label])=>`<option value="${esc(value)}">${esc(label)}</option>`).join("");
     render();
+    // A direct shared link works even when the listing is on another page.
+    const shared = items.find(item => String(item.id) === sharedId);
+    if (shared) openDetails({dataset:{id:String(shared.id)}});
   } catch (error) {
     grid.innerHTML =
       '<div class="loading">The catalogue is temporarily unavailable. ' +
@@ -470,25 +540,3 @@ function addShareButtons() {
     ?.append(container);
 }
 
-// Open a shared listing after the catalogue has loaded.
-const sharedItemId =
-  new URL(window.location.href).searchParams.get("item");
-
-if (sharedItemId) {
-  function openSharedItem() {
-    const card = [...grid.querySelectorAll(".amulet-card")]
-      .find(element => element.dataset.id === sharedItemId);
-
-    if (!card) return false;
-    openDetails(card);
-    return true;
-  }
-
-  if (!openSharedItem()) {
-    const sharedItemObserver = new MutationObserver(() => {
-      if (openSharedItem()) sharedItemObserver.disconnect();
-    });
-
-    sharedItemObserver.observe(grid, { childList: true });
-  }
-}

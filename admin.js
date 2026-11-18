@@ -1,704 +1,294 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-import {
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
-  supabaseConfigured
-} from "./supabase.js";
-
-// ==========================================
-// 1. INITIAL SETUP
-// ==========================================
+import { SUPABASE_URL, SUPABASE_ANON_KEY, supabaseConfigured } from "./supabase.js";
 
 const $ = id => document.getElementById(id);
-
-const loginPanel = $("loginPanel");
-const dashboard = $("dashboard");
-
-const loginForm = $("loginForm");
-const amuletForm = $("amuletForm");
-
-const saveButton = $("saveButton");
-const adminItems = $("adminItems");
-
+const PAGE_SIZE = 10;
+const BUCKET = "amulet-photos";
 let db = null;
 let items = [];
+let page = 1;
 let currentUserId = null;
+let previewObjectUrls = [];
+let busy = false;
 
-// Create photo preview area without changing admin.html.
-const photoPreview = document.createElement("div");
-
-photoPreview.id = "photoPreview";
-photoPreview.style.cssText = `
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  margin-top:12px;
-`;
-
-$("photos").closest("label").after(photoPreview);
-
-// ==========================================
-// 2. HELPER FUNCTIONS
-// ==========================================
-
-function msg(id, message) {
-  const element = $(id);
-  if (element) element.textContent = message;
+function message(id, value) { $(id).textContent = value; }
+function escapeHtml(value = "") {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[c]);
 }
-
-function esc(value = "") {
-  return String(value).replace(/[&<>"']/g, character => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[character]));
-}
-
-function imageList(item) {
+function imagesOf(item) {
   return Array.isArray(item?.images)
-    ? item.images.filter(url =>
-        typeof url === "string" &&
-        /^https?:\/\//i.test(url)
-      )
+    ? item.images.filter(s => typeof s === "string" && /^https?:\/\//i.test(s))
     : [];
 }
-
-function setSaving(saving) {
-  saveButton.disabled = saving;
-  saveButton.textContent = saving
-    ? "Saving..."
-    : "Save piece";
+function priceText(item) {
+  return item.price_mode === "pm" || item.price == null
+    ? "PM FOR PRICE" : `S$${Number(item.price).toFixed(2)}`;
 }
-
-function formatPrice(item) {
-  if (item.price_mode === "pm") {
-    return "PM FOR PRICE";
-  }
-
-  return item.price != null
-    ? `S$${Number(item.price).toFixed(2)}`
-    : "No price";
+function setBusy(value) {
+  busy = value;
+  $("saveButton").disabled = value;
+  $("saveButton").textContent = value ? "Saving..." : "Save piece";
 }
-
-// ==========================================
-// 3. SUPABASE INITIALIZATION
-// ==========================================
-
-if (!supabaseConfigured) {
-  msg(
-    "loginMessage",
-    "Supabase is not configured. Please check supabase.js."
-  );
-} else {
-  db = createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  );
-
-  initializeAuth();
+function clearPreview() {
+  previewObjectUrls.forEach(url => URL.revokeObjectURL(url));
+  previewObjectUrls = [];
+  $("photoPreview").replaceChildren();
 }
-
-// ==========================================
-// 4. AUTHENTICATION
-// ==========================================
-
-async function initializeAuth() {
-
-  const { data, error } = await db.auth.getSession();
-
-  if (error) {
-    msg("loginMessage", error.message);
-    return;
-  }
-
-  await showSession(data.session);
-
-  db.auth.onAuthStateChange((event, session) => {
-
-    if (event === "TOKEN_REFRESHED") return;
-
-    showSession(session);
-
-  });
-}
-
-async function showSession(session) {
-
-  const loggedIn = !!session;
-
-  loginPanel.hidden = loggedIn;
-  dashboard.hidden = !loggedIn;
-
-  if (!loggedIn) {
-    currentUserId = null;
-    items = [];
-    return;
-  }
-
-  const userId = session.user.id;
-
-  if (currentUserId !== userId) {
-    currentUserId = userId;
-    await loadItems();
-  }
-}
-
-// ==========================================
-// 5. LOGIN
-// ==========================================
-
-loginForm.addEventListener("submit", async event => {
-
-  event.preventDefault();
-
-  if (!db) return;
-
-  msg("loginMessage", "Signing in...");
-
-  const email = $("email").value.trim();
-  const password = $("password").value;
-
-  const { error } = await db.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) {
-    msg("loginMessage", error.message);
-  } else {
-    msg("loginMessage", "");
-  }
-
-});
-
-// ==========================================
-// 6. LOGOUT
-// ==========================================
-
-$("signOut").addEventListener("click", async () => {
-
-  if (!db) return;
-
-  const { error } = await db.auth.signOut();
-
-  if (error) {
-    msg("editorMessage", error.message);
-  }
-
-});
-
-// ==========================================
-// 7. LOAD EXISTING AMULETS
-// ==========================================
-
-async function loadItems() {
-
-  if (!db) return;
-
-  msg("editorMessage", "Loading listings...");
-
-  const { data, error } = await db
-    .from("amulets")
-    .select("*")
-    .order("created_at", {
-      ascending: false
-    });
-
-  if (error) {
-    msg("editorMessage", "Unable to load listings: " + error.message);
-    return;
-  }
-
-  items = data || [];
-
-  renderList();
-
-  msg("editorMessage", "");
-
-}
-
-// ==========================================
-// 8. DISPLAY EXISTING LISTINGS
-// ==========================================
-
-function renderList() {
-
-  $("adminCount").textContent =
-    `${items.length} listings`;
-
-  if (!items.length) {
-    adminItems.innerHTML = `
-      <p class="muted">
-        No listings yet. Add your first piece.
-      </p>
-    `;
-    return;
-  }
-
-  adminItems.innerHTML = items.map(item => {
-
-    const images = imageList(item);
-
-    return `
-      <div class="admin-item">
-
-        ${
-          images[0]
-            ? `
-              <img
-                class="admin-thumb"
-                src="${esc(images[0])}"
-                alt="${esc(item.name)}"
-                loading="lazy">
-            `
-            : `
-              <div class="admin-thumb">
-                ๙
-              </div>
-            `
-        }
-
-        <div class="admin-item-info">
-
-          <strong>${esc(item.name)}</strong>
-
-          <small>
-            ${esc(item.master || "Unknown master")}
-            · ${esc(item.status || "available")}
-            · ${esc(formatPrice(item))}
-          </small>
-
-          <small>
-            ${images.length} photo(s)
-          </small>
-
-        </div>
-
-        <div class="admin-actions">
-
-          <button
-            type="button"
-            data-edit="${esc(item.id)}">
-            Edit
-          </button>
-
-          <button
-            type="button"
-            data-delete="${esc(item.id)}">
-            Delete
-          </button>
-
-        </div>
-
-      </div>
-    `;
-
-  }).join("");
-
-}
-
-// ==========================================
-// 9. PHOTO PREVIEW
-// ==========================================
-
-function showPhotoPreview(existingImages = []) {
-
-  photoPreview.innerHTML = "";
-
-  existingImages.forEach(url => {
-
+function previewPhotos(existing = []) {
+  clearPreview();
+  for (const url of existing) {
     const img = document.createElement("img");
-
     img.src = url;
     img.alt = "Existing amulet photo";
-
-    img.style.cssText = `
-      width:85px;
-      height:85px;
-      object-fit:cover;
-      border-radius:8px;
-      border:1px solid #ccc;
-    `;
-
-    photoPreview.appendChild(img);
-
-  });
-
-  const files = $("photos").files;
-
-  Array.from(files).forEach(file => {
-
-    if (!file.type.startsWith("image/")) return;
-
+    $("photoPreview").append(img);
+  }
+  for (const file of $("photos").files) {
+    if (!file.type.startsWith("image/")) continue;
+    const url = URL.createObjectURL(file);
+    previewObjectUrls.push(url);
     const img = document.createElement("img");
-
-    img.src = URL.createObjectURL(file);
-    img.alt = "New photo preview";
-
-    img.style.cssText = `
-      width:85px;
-      height:85px;
-      object-fit:cover;
-      border-radius:8px;
-      border:2px solid #b99755;
-    `;
-
-    photoPreview.appendChild(img);
-
-  });
-
+    img.src = url;
+    img.alt = "New photo to upload";
+    img.style.borderColor = "#b99755";
+    $("photoPreview").append(img);
+  }
+}
+function clearForm() {
+  $("amuletForm").reset();
+  $("itemId").value = "";
+  $("description").value = ""; // Always start with truly empty textarea.
+  $("formHeading").textContent = "Add a piece";
+  clearPreview();
+  message("editorMessage", "");
 }
 
+function filteredItems() {
+  const query = $("adminSearch").value.toLocaleLowerCase().trim();
+  const status = $("adminStatus").value;
+  return items.filter(item => {
+    if (status && item.status !== status) return false;
+    if (!query) return true;
+    return [item.name, item.master, item.ajarn, item.category, item.description]
+      .some(value => String(value ?? "").toLocaleLowerCase().includes(query));
+  });
+}
+function renderList() {
+  const filtered = filteredItems();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  page = Math.min(Math.max(page, 1), totalPages);
+  const start = (page - 1) * PAGE_SIZE;
+  const visible = filtered.slice(start, start + PAGE_SIZE);
+  $("adminCount").textContent = `${filtered.length} of ${items.length} listings`;
+  $("adminItems").innerHTML = visible.map(item => {
+    const firstImage = imagesOf(item)[0];
+    return `<article class="admin-item">
+      ${firstImage ? `<img class="admin-thumb" src="${escapeHtml(firstImage)}" alt="" loading="lazy">` : `<div class="admin-thumb" aria-hidden="true">๙</div>`}
+      <div class="admin-item-info">
+        <strong>${escapeHtml(item.name || "Untitled")}</strong>
+        <small>${escapeHtml(item.master || item.ajarn || "")}</small>
+        <small>${escapeHtml(item.status || "available")} · ${escapeHtml(priceText(item))} · ${imagesOf(item).length} photo(s)</small>
+      </div>
+      <div class="admin-actions">
+        <button type="button" data-edit="${escapeHtml(item.id)}">Edit</button>
+        <button type="button" data-delete="${escapeHtml(item.id)}">Delete</button>
+      </div>
+    </article>`;
+  }).join("") || '<p class="muted">No amulets match your search.</p>';
+  $("adminPagination").hidden = filtered.length <= PAGE_SIZE;
+  $("pageInfo").textContent = `Page ${page} of ${totalPages}`;
+  $("prevPage").disabled = page === 1;
+  $("nextPage").disabled = page === totalPages;
+}
+async function loadItems() {
+  if (!db) return;
+  // Supabase PostgREST defaults to a maximum of 1,000 rows per request.
+  // Fetch all batches so pagination/search includes older amulets too.
+  const loaded = [];
+  let offset = 0;
+  const batchSize = 500;
+  while (true) {
+    const { data, error } = await db.from("amulets")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(offset, offset + batchSize - 1);
+    if (error) throw error;
+    loaded.push(...(data || []));
+    if (!data || data.length < batchSize) break;
+    offset += batchSize;
+  }
+  items = loaded;
+  renderList();
+}
+async function showSession(session) {
+  const signedIn = Boolean(session);
+  $("loginPanel").hidden = signedIn;
+  $("dashboard").hidden = !signedIn;
+  if (!signedIn) {
+    currentUserId = null;
+    items = [];
+    clearForm();
+    return;
+  }
+  if (session.user.id === currentUserId) return;
+  currentUserId = session.user.id;
+  try {
+    await loadItems();
+  } catch (error) {
+    message("editorMessage", `Unable to load listings: ${error.message}`);
+  }
+}
+
+$("loginForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!db) return;
+  message("loginMessage", "Signing in...");
+  const { error } = await db.auth.signInWithPassword({
+    email: $("email").value.trim(), password: $("password").value
+  });
+  message("loginMessage", error?.message || "");
+});
+$("signOut").addEventListener("click", async () => {
+  if (!db) return;
+  const { error } = await db.auth.signOut();
+  if (error) message("editorMessage", error.message);
+});
+$("adminSearch").addEventListener("input", () => { page = 1; renderList(); });
+$("adminStatus").addEventListener("change", () => { page = 1; renderList(); });
+$("prevPage").addEventListener("click", () => { if (page > 1) { page--; renderList(); } });
+$("nextPage").addEventListener("click", () => {
+  if (page * PAGE_SIZE < filteredItems().length) { page++; renderList(); }
+});
+$("clearForm").addEventListener("click", clearForm);
 $("photos").addEventListener("change", () => {
-
-  const id = $("itemId").value;
-
-  const existing = items.find(item =>
-    String(item.id) === String(id)
-  );
-
-  showPhotoPreview(imageList(existing));
-
+  const current = items.find(x => String(x.id) === $("itemId").value);
+  previewPhotos(imagesOf(current));
 });
 
-// ==========================================
-// 10. EDIT EXISTING LISTING
-// ==========================================
-
-adminItems.addEventListener("click", async event => {
-
-  const editButton = event.target.closest("[data-edit]");
-  const deleteButton = event.target.closest("[data-delete]");
-
-  if (editButton) {
-
-    const id = editButton.dataset.edit;
-
-    const item = items.find(x =>
-      String(x.id) === String(id)
-    );
-
-    if (!item) return;
-
+$("adminItems").addEventListener("click", async event => {
+  if (busy) return;
+  const edit = event.target.closest("button[data-edit]");
+  const del = event.target.closest("button[data-delete]");
+  if (!edit && !del) return;
+  const id = (edit || del).dataset[edit ? "edit" : "delete"];
+  const item = items.find(x => String(x.id) === id);
+  if (!item) return;
+  if (edit) {
     $("itemId").value = item.id;
     $("itemName").value = item.name || "";
     $("master").value = item.master || item.ajarn || "";
     $("category").value = item.category || "";
-    $("description").value = item.description || "";
-
+    $("description").value = String(item.description || "").trim();
     $("priceMode").value = item.price_mode || "pm";
-
     $("price").value = item.price ?? "";
-
     $("status").value = item.status || "available";
-
     $("photos").value = "";
-
     $("formHeading").textContent = "Edit a piece";
-
-    showPhotoPreview(imageList(item));
-
-    msg(
-      "editorMessage",
-      "Editing: " + item.name
-    );
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-
+    previewPhotos(imagesOf(item));
+    message("editorMessage", `Editing: ${item.name}`);
+    $("itemName").focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
-
-  if (deleteButton) {
-
-    const id = deleteButton.dataset.delete;
-
-    const item = items.find(x =>
-      String(x.id) === String(id)
-    );
-
-    if (!item) return;
-
-    const confirmed = confirm(
-      `Are you sure you want to delete "${item.name}"?`
-    );
-
-    if (!confirmed) return;
-
-    msg("editorMessage", "Deleting listing...");
-
-    const { error } = await db
-      .from("amulets")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-
-      msg("editorMessage", error.message);
-
-      return;
-
-    }
-
-    msg("editorMessage", "Listing deleted successfully.");
-
-    if ($("itemId").value === String(id)) {
-      clearForm();
-    }
-
-    await loadItems();
-
+  if (!window.confirm(`Delete "${item.name}"? This removes the listing (not the stored photos).`)) return;
+  message("editorMessage", "Deleting listing...");
+  const { data, error } = await db.from("amulets").delete().eq("id", id).select("id");
+  if (error || !data?.length) {
+    message("editorMessage", error?.message || "Delete was not allowed. Check your Supabase permissions.");
+    return;
   }
-
+  if ($("itemId").value === id) clearForm();
+  try {
+    await loadItems();
+    message("editorMessage", "Listing deleted.");
+  } catch (loadError) {
+    message("editorMessage", `Deleted, but refresh failed: ${loadError.message}`);
+  }
 });
 
-// ==========================================
-// 11. CLEAR FORM
-// ==========================================
-
-function clearForm() {
-
-  amuletForm.reset();
-
-  $("itemId").value = "";
-
-  $("formHeading").textContent = "Add a piece";
-
-  $("photos").value = "";
-
-  photoPreview.innerHTML = "";
-
-  msg("editorMessage", "");
-
-}
-
-$("clearForm").addEventListener("click", clearForm);
-
-// ==========================================
-// 12. UPLOAD PHOTOS TO SUPABASE
-// ==========================================
-
-async function uploadPhotos(files) {
-
-  const uploadedUrls = [];
-  const uploadedPaths = [];
-
-  for (const file of files) {
-
-    if (!file.type.startsWith("image/")) {
-      throw new Error(
-        `${file.name} is not a valid image file.`
-      );
-    }
-
-    const extension =
-      file.name.split(".").pop().replace(/[^a-zA-Z0-9]/g, "") ||
-      "jpg";
-
-    const path =
-      `${crypto.randomUUID()}.${extension}`;
-
-    const { error } = await db.storage
-      .from("amulet-photos")
-      .upload(path, file, {
-        upsert: false,
-        contentType: file.type
-      });
-
-    if (error) {
-      throw error;
-    }
-
-    const { data } = db.storage
-      .from("amulet-photos")
-      .getPublicUrl(path);
-
-    if (!data?.publicUrl) {
-      throw new Error(
-        "Unable to generate the public image URL."
-      );
-    }
-
-    uploadedUrls.push(data.publicUrl);
-
-    uploadedPaths.push(path);
-
-  }
-
-  return {
-    uploadedUrls,
-    uploadedPaths
-  };
-
-}
-
-// ==========================================
-// 13. SAVE OR UPDATE LISTING
-// ==========================================
-
-amuletForm.addEventListener("submit", async event => {
-
+$("amuletForm").addEventListener("submit", async event => {
   event.preventDefault();
-
-  if (!db) {
-    msg("editorMessage", "Supabase is not connected.");
-    return;
-  }
-
-  setSaving(true);
-
-  msg("editorMessage", "Preparing your listing...");
-
+  if (!db || busy) return;
+  const id = $("itemId").value;
+  const existing = items.find(item => String(item.id) === id);
+  const files = Array.from($("photos").files);
   const uploadedPaths = [];
-
+  let saved = false;
+  setBusy(true);
   try {
-
-    const id = $("itemId").value;
-
-    const oldItem = items.find(item =>
-      String(item.id) === String(id)
-    );
-
-    // Preserve existing images.
-    const existingImages = imageList(oldItem);
-
-    // Upload newly selected photos.
-    const files = Array.from($("photos").files);
-
-    let newImages = [];
-
-    if (files.length > 0) {
-
-      msg(
-        "editorMessage",
-        `Uploading ${files.length} photo(s)...`
-      );
-
-      const result = await uploadPhotos(files);
-
-      newImages = result.uploadedUrls;
-
-      uploadedPaths.push(...result.uploadedPaths);
-
-    }
-
-    // Combine old and new photos.
-    const allImages = [
-      ...existingImages,
-      ...newImages
-    ];
-
+    const name = $("itemName").value.trim();
+    if (!name) throw new Error("Please enter an amulet name.");
     const priceMode = $("priceMode").value;
-
-    const priceValue = $("price").value;
-
-    const payload = {
-
-      name: $("itemName").value.trim(),
-
-      master: $("master").value.trim(),
-
-      category: $("category").value.trim(),
-
-      description: $("description").value.trim(),
-
-      price_mode: priceMode,
-
-      price: priceMode === "pm" || priceValue === ""
-        ? null
-        : Number(priceValue),
-
-      status: $("status").value,
-
-      images: allImages
-
-    };
-
-    if (!payload.name) {
-      throw new Error("Please enter an amulet name.");
-    }
-
-    if (
-      payload.price !== null &&
-      (!Number.isFinite(payload.price) || payload.price < 0)
-    ) {
+    const priceRaw = $("price").value.trim();
+    const price = priceMode === "pm" || priceRaw === "" ? null : Number(priceRaw);
+    if (price !== null && (!Number.isFinite(price) || price < 0)) {
       throw new Error("Please enter a valid price.");
     }
-
-    msg(
-      "editorMessage",
-      "Saving listing to database..."
-    );
-
-    let result;
-
-    if (id) {
-
-      result = await db
-        .from("amulets")
-        .update(payload)
-        .eq("id", id);
-
-    } else {
-
-      result = await db
-        .from("amulets")
-        .insert(payload);
-
+    const urls = [...imagesOf(existing)];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith("image/")) throw new Error(`${file.name} is not an image.`);
+      message("editorMessage", `Uploading photo ${i + 1} of ${files.length}...`);
+      const ext = (file.name.split(".").pop() || "jpg").replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "jpg";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await db.storage.from(BUCKET).upload(path, file, {
+        upsert: false, contentType: file.type
+      });
+      if (error) throw error;
+      uploadedPaths.push(path); // Record immediately so partial uploads can be cleaned up.
+      const { data } = db.storage.from(BUCKET).getPublicUrl(path);
+      if (!data?.publicUrl) throw new Error("Unable to obtain image URL.");
+      urls.push(data.publicUrl);
     }
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    msg(
-      "editorMessage",
-      "Successfully saved your amulet!"
-    );
-
+    const payload = {
+      name,
+      master: $("master").value.trim(),
+      category: $("category").value.trim(),
+      description: $("description").value.trim(),
+      price_mode: priceMode,
+      price,
+      status: $("status").value,
+      images: urls
+    };
+    message("editorMessage", "Saving listing...");
+    const result = id
+      ? await db.from("amulets").update(payload).eq("id", id).select("id")
+      : await db.from("amulets").insert(payload).select("id");
+    if (result.error) throw result.error;
+    if (!result.data?.length) throw new Error("No listing was saved. Check the Supabase permissions.");
+    saved = true;
     clearForm();
-
-    await loadItems();
-
-  } catch (error) {
-
-    console.error("Admin save error:", error);
-
-    // Clean up newly uploaded images if database save fails.
-    if (uploadedPaths.length > 0) {
-
-      const { error: cleanupError } = await db.storage
-        .from("amulet-photos")
-        .remove(uploadedPaths);
-
-      if (cleanupError) {
-        console.error("Image cleanup error:", cleanupError);
-      }
-
+    page = 1;
+    try {
+      await loadItems();
+      message("editorMessage", "Piece saved successfully.");
+    } catch (refreshError) {
+      message("editorMessage", `Piece saved, but refresh failed: ${refreshError.message}`);
     }
-
-    msg(
-      "editorMessage",
-      "Error: " + (error.message || "Unable to save listing.")
-    );
-
+  } catch (error) {
+    if (!saved && uploadedPaths.length) {
+      const { error: cleanupError } = await db.storage.from(BUCKET).remove(uploadedPaths);
+      if (cleanupError) console.error("Could not clean up unsaved photos:", cleanupError);
+    }
+    console.error("Save error:", error);
+    message("editorMessage", `Error: ${error.message || "Unable to save."}`);
   } finally {
-
-    setSaving(false);
-
+    setBusy(false);
   }
-
 });
 
-// ==========================================
-// 14. INITIAL PHOTO PREVIEW
-// ==========================================
-
-showPhotoPreview();
-
+if (!supabaseConfigured) {
+  message("loginMessage", "Supabase configuration is missing in supabase.js.");
+} else {
+  db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  db.auth.onAuthStateChange((_event, session) => {
+    // Do not run awaited Supabase queries directly in this auth callback.
+    setTimeout(() => { void showSession(session); }, 0);
+  });
+  db.auth.getSession().then(({ data, error }) => {
+    if (error) message("loginMessage", error.message);
+    else void showSession(data.session);
+  });
+}

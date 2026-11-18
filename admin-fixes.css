@@ -1,0 +1,53 @@
+/* Admin-only usability improvements. Loaded AFTER existing styles.css. */
+.admin-page .admin-columns { align-items: start; }
+.admin-page .editor { min-width: 0; }
+.admin-page .editor textarea#description {
+  display: block;
+  width: 100%;
+  min-height: 210px;
+  padding: 13px 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: vertical;
+  tab-size: 2;
+}
+.admin-page .admin-list { min-width: 0; }
+.admin-page .admin-list-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(140px, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 15px;
+  background: var(--white, #fcfaf4);
+  border: 1px solid var(--line, #d4d8c9);
+}
+.admin-page .admin-list-controls label { font-size: 11px; color: var(--ink2, #42584f); }
+.admin-page .admin-list-controls input,
+.admin-page .admin-list-controls select { display: block; margin-top: 6px; min-height: 44px; }
+.admin-page .admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line, #d4d8c9);
+}
+.admin-page .admin-pagination[hidden] { display: none !important; }
+.admin-page #pageInfo { font-size: 12px; color: var(--ink2, #42584f); }
+.admin-page .admin-pagination button:disabled { opacity: .4; cursor: not-allowed; }
+.admin-page .admin-item-info { min-width: 0; }
+.admin-page .admin-item-info strong { overflow-wrap: anywhere; }
+.admin-page #photos { display: block; width: 100%; min-height: 45px; position: relative; z-index: 1; cursor: pointer; }
+.admin-page #photos::file-selector-button { background: #164737; color: white; border: none; padding: 9px 12px; margin-right: 10px; cursor: pointer; }
+.admin-page #photoPreview { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 20px; }
+.admin-page #photoPreview img { width: 85px; height: 85px; object-fit: cover; border: 1px solid var(--line, #d4d8c9); border-radius: 6px; }
+.admin-page .admin-item .admin-actions button { cursor: pointer; }
+@media(max-width:600px) {
+  .admin-page .admin-list-controls { grid-template-columns: 1fr; }
+  .admin-page .admin-pagination { justify-content: center; }
+  .admin-page .admin-pagination button { flex: 1; }
+  .admin-page #pageInfo { width: 100%; order: -1; text-align: center; }
+}
